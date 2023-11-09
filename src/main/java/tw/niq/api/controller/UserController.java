@@ -1,5 +1,11 @@
 package tw.niq.api.controller;
 
+import java.util.List;
+import java.util.Set;
+import java.util.stream.Collectors;
+
+import org.springframework.http.MediaType;
+import org.springframework.security.core.session.SessionRegistry;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -10,40 +16,78 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
+import lombok.RequiredArgsConstructor;
+import tw.niq.api.mapper.CycleAvoidingMappingContext;
+import tw.niq.api.mapper.UserMapper;
 import tw.niq.api.model.UserModel;
+import tw.niq.api.service.UserService;
 
+@RequiredArgsConstructor
 @RestController
-@RequestMapping(path = UserController.PATH)
+@RequestMapping(path = UserController.ROOT_PATH)
 public class UserController {
 
-	public static final String PATH = "/api/v1/users";
-	public static final String PATH_USER_ID = "/{userId}";
+	public static final String ROOT_PATH = "/api/v1/users";
+	public static final String USER_ID_PATH = "/{userId}";
+	
+	private final UserService userService;
+	private final UserMapper userMapper;
+	private final CycleAvoidingMappingContext context;
+	private final SessionRegistry sessionRegistry;
 	
 	@GetMapping
-	public String getUsers(
+	public Set<UserModel> getAll(
 			@RequestParam(value = "page", defaultValue = "1") int page,
 			@RequestParam(value = "limit", defaultValue = "25") int limit) {
-		return String.format("GET - page: %s, limit: %s", page, limit);
+		return userService.getAll(page, limit).stream()
+				.map(userDto -> userMapper.toUserModel(userDto, context))
+				.collect(Collectors.toSet());
+	}
+
+	@GetMapping(
+			path = UserController.USER_ID_PATH, 
+			produces = { 
+					MediaType.APPLICATION_JSON_VALUE, 
+					MediaType.APPLICATION_XML_VALUE })
+	public UserModel getByUserId(@PathVariable("userId") String userId) {
+		return userMapper.toUserModel(userService.getByUserId(userId), context);
+	}
+
+	@PostMapping(
+			consumes = { 
+					MediaType.APPLICATION_JSON_VALUE, 
+					MediaType.APPLICATION_XML_VALUE}, 
+			produces = {
+					MediaType.APPLICATION_JSON_VALUE, 
+					MediaType.APPLICATION_XML_VALUE})
+	public UserModel createUser(@RequestBody UserModel userModel) {
+		return userMapper.toUserModel(userService.createOrUpdate(userMapper.toUserDto(userModel, context)), context);
+	}
+
+	@PutMapping(
+			path = UserController.USER_ID_PATH, 
+			consumes = { 
+					MediaType.APPLICATION_JSON_VALUE,
+					MediaType.APPLICATION_XML_VALUE }, 
+			produces = { 
+					MediaType.APPLICATION_JSON_VALUE,
+					MediaType.APPLICATION_XML_VALUE })
+	public UserModel updateUser(@PathVariable("userId") String userId, @RequestBody UserModel userModel) {
+		userModel.setUserId(userId);
+		return userMapper.toUserModel(userService.createOrUpdate(userMapper.toUserDto(userModel, context)), context);
+	}
+
+	@DeleteMapping(path = UserController.USER_ID_PATH)
+	public void deleteByUserId(@PathVariable("userId") String userId) {
+		userService.deleteByUserId(userId);
 	}
 	
-	@GetMapping(path = PATH_USER_ID)
-	public String getUserByUserId(@PathVariable("userId") String userId) {
-		return String.format("GET - userId: %s", userId);
-	}
-	
-	@PostMapping
-	public String createUser(@RequestBody UserModel userModel) {
-		return String.format("POST - userModel: %s", userModel);
-	}
-	
-	@PutMapping(path = PATH_USER_ID)
-	public String updateUserByUserId(@PathVariable("userId") String userId, @RequestBody UserModel userModel) {
-		return String.format("PUT - userId: %s, userModel: %s", userId, userModel);
-	}
-	
-	@DeleteMapping(path = PATH_USER_ID)
-	public String deleteUserByUserId(@PathVariable("userId") String userId) {
-		return String.format("DELETE - userId: %s", userId);
+	@GetMapping("/getAllLoggedIn")
+	public Set<UserModel> getAllLoggedIn(
+			@RequestParam(value = "page", defaultValue = "1") int page,
+			@RequestParam(value = "limit", defaultValue = "25") int limit) {
+		List<Object> principals = sessionRegistry.getAllPrincipals();
+		return principals.stream().map(principal -> (UserModel) principal).collect(Collectors.toSet());
 	}
 	
 }

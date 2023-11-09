@@ -4,7 +4,6 @@ import java.time.LocalDateTime;
 import java.util.Set;
 
 import com.fasterxml.jackson.annotation.JsonIgnore;
-import com.fasterxml.jackson.annotation.JsonProperty;
 
 import jakarta.validation.constraints.NotBlank;
 import lombok.AllArgsConstructor;
@@ -15,43 +14,34 @@ import lombok.NoArgsConstructor;
 import lombok.Setter;
 import lombok.ToString;
 
-@Getter 
-@Setter 
+@Getter
+@Setter
 @NoArgsConstructor
 @AllArgsConstructor
 @ToString
 @EqualsAndHashCode
 @Builder
-public class UserModel {
+public class RoleModel {
 	
 	@JsonIgnore
 	private Long id;
 	
 	private Long version;
-
+	
 	private LocalDateTime createdDate;
 	
 	private LocalDateTime lastModifiedDate;
 	
-	private String userId;
-	
 	@NotBlank
-	private String username;
-	
-	@JsonProperty(access = JsonProperty.Access.WRITE_ONLY)
-	@NotBlank
-	private String password;
-	
-	private Boolean accountNonExpired;
-
-	private Boolean accountNonLocked;
-
-	private Boolean credentialsNonExpired;
-
-	private Boolean enabled;
+	private String name;
 	
 	@ToString.Exclude
 	@EqualsAndHashCode.Exclude
-	private Set<RoleModel> roles;
+	private Set<AuthorityModel> authorities;
+	
+	@JsonIgnore
+	@ToString.Exclude
+	@EqualsAndHashCode.Exclude
+	private Set<UserModel> users;
 
 }
